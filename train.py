@@ -39,20 +39,18 @@ def file_count_rec(d):
 # dimensions of our images.
 img_width, img_height = image_size, image_size
 
-dataset = 'data_medium.kaggle'
-#dataset = 'data_small.kaggle'
-train_data_dir = dataset + '/train'
-validation_data_dir = dataset + '/validation'
-nb_train_samples = file_count_rec(train_data_dir)
-nb_validation_samples = file_count_rec(validation_data_dir)
+dataset = 'data_small.flickr'
+nb_samples = file_count_rec(dataset)
+validation_split = 0.2
+
+nb_validation_samples = int(validation_split * nb_samples)
+nb_train_samples = nb_samples - nb_validation_samples
+
 epochs = args.epochs
 batch_size = args.batch_size
 
 kernel_init = 'glorot_normal'
 classes = 2
-
-print "train ", file_count_rec(train_data_dir)
-print "validation ", file_count_rec(validation_data_dir)
 
 if K.image_data_format() == 'channels_first':
     axis = 1
@@ -63,37 +61,37 @@ else:
 
 model = Sequential()
 
-model.add(Conv2D(args.conv_a, (3, 3), kernel_initializer=kernel_init, input_shape=input_shape))
+model.add(Conv2D(32, (3, 3), kernel_initializer=kernel_init, input_shape=input_shape))
 model.add(BatchNormalization(axis=axis, momentum=0.99, epsilon=0.001, center=True, scale=True))
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
-model.add(Conv2D(args.conv_b, (3, 3), kernel_initializer=kernel_init))
+model.add(Conv2D(64, (3, 3), kernel_initializer=kernel_init))
 model.add(BatchNormalization(axis=axis, momentum=0.99, epsilon=0.001, center=True, scale=True))
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
-model.add(Conv2D(args.conv_c, (3, 3), kernel_initializer=kernel_init))
+model.add(Conv2D(128, (3, 3), kernel_initializer=kernel_init))
 model.add(BatchNormalization(axis=axis, momentum=0.99, epsilon=0.001, center=True, scale=True))
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
-model.add(Conv2D(args.conv_d, (3, 3), kernel_initializer=kernel_init))
+model.add(Conv2D(128, (3, 3), kernel_initializer=kernel_init))
 model.add(BatchNormalization(axis=axis, momentum=0.99, epsilon=0.001, center=True, scale=True))
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
-model.add(Conv2D(args.conv_d*2, (3, 3), kernel_initializer=kernel_init))
+model.add(Conv2D(256, (3, 3), kernel_initializer=kernel_init))
 model.add(BatchNormalization(axis=axis, momentum=0.99, epsilon=0.001, center=True, scale=True))
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
-model.add(Conv2D(args.conv_d*2, (3, 3), kernel_initializer=kernel_init))
+model.add(Conv2D(256, (3, 3), kernel_initializer=kernel_init))
 model.add(BatchNormalization(axis=axis, momentum=0.99, epsilon=0.001, center=True, scale=True))
 model.add(Activation('relu'))
   
 model.add(Flatten())
-if classes == 2:
+if classes == 1:
 	model.add(Dense(1, activation='sigmoid'))
 	class_mode = 'binary'
 else:
@@ -118,23 +116,27 @@ while os.path.isfile("model_%s.txt" % model_id):
 # this is the augmentation configuration we will use for training
 augmentation = {'shear_range':0.2, 'zoom_range':0.2, 'horizontal_flip':True}
   #rotation_range=10,
-train_datagen = ImageDataGenerator(rescale=1. / 255, **augmentation)
+train_datagen = ImageDataGenerator(rescale=1. / 255, validation_split=validation_split, **augmentation)
 
 # this is the augmentation configuration we will use for testing:
 # only rescaling
-test_datagen = ImageDataGenerator(rescale=1. / 255)
+test_datagen = ImageDataGenerator(rescale=1. / 255, validation_split=validation_split)
 
 train_generator = train_datagen.flow_from_directory(
-    train_data_dir,
+    dataset,
+    #save_to_dir="train_out",
     target_size=(img_width, img_height),
     batch_size=batch_size,
-    class_mode=class_mode)
+    class_mode=class_mode,
+	subset="training")
 
 validation_generator = test_datagen.flow_from_directory(
-    validation_data_dir,
+    dataset,
+    #save_to_dir="validation_out",
     target_size=(img_width, img_height),
     batch_size=batch_size,
-    class_mode=class_mode)
+    class_mode=class_mode,
+	subset="validation")
 
 callbacks = [
   #ModelCheckpoint('models/' + model_id + '.{epoch:02d}-{val_loss:.4f}-{val_acc:.4f}.hdf5', save_best_only=True, monitor='val_acc'),
