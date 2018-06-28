@@ -33,7 +33,7 @@ while page <= pages:
 			z = p['url_z']
 			print "%s - %s - %s" % (inc, p['id'], z)
 			for e in xrange(10):
-				time.sleep(0.5)
+				time.sleep(0.2)
 				f = '%s/%06d_%s.jpg' % (d, inc, p['id'])
 				try:
 					urllib.urlretrieve(z, f)
